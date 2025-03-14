@@ -1,0 +1,25 @@
+name: Move Issue to In Progress when PR is opened
+
+on:
+  pull_request:
+    types:
+      - opened
+
+jobs:
+  move-to-in-progress:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extraer número de issue del PR
+        id: extract-issue
+        run: |
+          ISSUE_NUMBER=$(echo "${{ github.event.pull_request.body }}" | grep -oE "fix #([0-9]+)" | awk '{print $2}' | tr -d '#')
+          echo "ISSUE_NUMBER=$ISSUE_NUMBER" >> $GITHUB_ENV
+
+      - name: Mover a "In Progress"
+        if: env.ISSUE_NUMBER != ''
+        uses: actions/add-to-project@v1
+        with:
+          project-url: ${{ secrets.KANBAN_URL }}
+          github-token: ${{ secrets.PAT }}
+          content-id: ${{ env.ISSUE_NUMBER }}
+          status: "In Progress"

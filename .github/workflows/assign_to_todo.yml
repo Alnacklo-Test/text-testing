@@ -1,0 +1,18 @@
+name: Move Issue to To Do when assigned
+
+on:
+  issues:
+    types:
+      - assigned
+
+jobs:
+  move-to-do:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mover a "To Do"
+        uses: actions/add-to-project@v1
+        with:
+          project-url: ${{ secrets.KANBAN_URL }}
+          github-token: ${{ secrets.PAT }}
+          content-id: ${{ github.event.issue.node_id }}
+          status: "To Do"
