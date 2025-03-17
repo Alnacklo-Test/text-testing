@@ -8,14 +8,19 @@ on:
 jobs:
   move-to-in-progress:
     runs-on: ubuntu-latest
+    env:
+      PROJECT_ID: "PVT_kwDODB6w4M4A0YLS"
+      FIELD_STATUS_ID: "PVTSSF_lADODB6w4M4A0YLSzgqBSYE"
+      STATUS_IN_PROGRESS_ID: "47fc9ee4"
+
     steps:
-      - name: Extraer número de issue del PR
+      - name: Extraer número de Issue del PR
         id: extract-issue
         run: |
           ISSUE_NUMBER=$(echo "${{ github.event.pull_request.body }}" | grep -oE "fix #([0-9]+)" | awk '{print $2}' | tr -d '#')
           echo "ISSUE_NUMBER=$ISSUE_NUMBER" >> $GITHUB_ENV
 
-      - name: Obtener ID del Issue
+      - name: Obtener el ID del Issue
         id: get-issue-id
         run: |
           ISSUE_ID=$(curl -s -H "Authorization: Bearer ${{ secrets.ALNACKLO_PAT }}" \
@@ -23,11 +28,18 @@ jobs:
             https://api.github.com/repos/${{ github.repository }}/issues/${{ env.ISSUE_NUMBER }} | jq -r .node_id)
           echo "ISSUE_ID=$ISSUE_ID" >> $GITHUB_ENV
 
-      - name: Mover a "In Progress"
+      - name: Agregar el Issue al Proyecto (si no está agregado)
         run: |
-          COLUMN_ID="3"  
-
-          curl -X POST -H "Authorization: Bearer ${{ secrets.ALNACKLO_PAT }}" \
+          PROJECT_ITEM_ID=$(curl -s -X POST -H "Authorization: Bearer ${{ secrets.ALNACKLO_PAT }}" \
             -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/projects/columns/${COLUMN_ID}/cards \
-            -d "{\"content_id\": \"${{ env.ISSUE_ID }}\", \"content_type\": \"Issue\"}"
+            https://api.github.com/graphql \
+            -d '{ "query": "mutation { addProjectV2ItemById(input: { projectId: \"'$PROJECT_ID'\", contentId: \"'$ISSUE_ID'\" }) { item { id } } }" }' | jq -r '.data.addProjectV2ItemById.item.id')
+
+          echo "PROJECT_ITEM_ID=$PROJECT_ITEM_ID" >> $GITHUB_ENV
+
+      - name: Mover el Issue a "In Progress"
+        run: |
+          curl -s -X POST -H "Authorization: Bearer ${{ secrets.ALNACKLO_PAT }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/graphql \
+            -d '{ "query": "mutation { updateProjectV2ItemFieldValue(input: { projectId: \"'$PROJECT_ID'\", itemId: \"'$PROJECT_ITEM_ID'\", fieldId: \"'$FIELD_STATUS_ID'\", value: { singleSelectOptionId: \"'$STATUS_IN_PROGRESS_ID'\" } }) { projectV2Item { id } } }" }'
