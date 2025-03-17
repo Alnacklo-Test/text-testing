@@ -1,4 +1,4 @@
-name: Move Issue to Done when PR is merged
+name: Move Issue to DEV when PR is merged
 
 on:
   pull_request:
@@ -6,28 +6,83 @@ on:
       - closed
 
 jobs:
-  move-to-done:
+  move-to-DEV:
     runs-on: ubuntu-latest
+    env:
+      PROJECT_ID: "PVT_kwDODB6w4M4A0YLS"  # ID del Proyecto
+      FIELD_STATUS_ID: "PVTSSF_lADODB6w4M4A0YLSzgqBSYE"  # ID del campo "Status"
+      STATUS_DEV_ID: "98236657"  # ID del estado "DEV"
+
     steps:
-      - name: Extraer número de issue del PR
+      - name: Verificar si el PR fue mergeado a `dev`
+        id: check-merged
+        run: |
+          if [ "${{ github.event.pull_request.merged }}" != "true" ]; then
+            echo "❌ El PR fue cerrado pero no mergeado. Saliendo..."
+            exit 1
+          fi
+
+          if [ "${{ github.event.pull_request.base.ref }}" != "dev" ]; then
+            echo "❌ El PR fue mergeado a '${{ github.event.pull_request.base.ref }}', no a 'dev'. Saliendo..."
+            exit 1
+          fi
+
+          echo "✅ El PR fue mergeado correctamente a 'dev'."
+
+      - name: Extraer número de Issue del PR
         id: extract-issue
         run: |
-          ISSUE_NUMBER=$(echo "${{ github.event.pull_request.body }}" | grep -oE "fix #([0-9]+)" | awk '{print $2}' | tr -d '#')
+          ISSUE_NUMBER=$(printf "%s %s" "${{ github.event.pull_request.title }}" "${{ github.event.pull_request.body }}" | grep -oiE "fix(es)? #([0-9]+)" | awk '{print $NF}' | tr -d '#')
+
+          if [ -z "$ISSUE_NUMBER" ]; then
+            echo "❌ No se encontró un número de Issue en el PR."
+            exit 1
+          fi
+          
+          echo "✅ Número de Issue detectado: $ISSUE_NUMBER"
           echo "ISSUE_NUMBER=$ISSUE_NUMBER" >> $GITHUB_ENV
 
-      - name: Obtener ID del Issue
+      - name: Obtener el ID del Issue desde GitHub API
         id: get-issue-id
         run: |
           ISSUE_ID=$(curl -s -H "Authorization: Bearer ${{ secrets.ALNACKLO_PAT }}" \
             -H "Accept: application/vnd.github.v3+json" \
             https://api.github.com/repos/${{ github.repository }}/issues/${{ env.ISSUE_NUMBER }} | jq -r .node_id)
+
+          if [ "$ISSUE_ID" == "null" ]; then
+            echo "❌ No se pudo obtener el node_id del Issue. Saliendo..."
+            exit 1
+          fi
+
+          echo "✅ ID del Issue obtenido: $ISSUE_ID"
           echo "ISSUE_ID=$ISSUE_ID" >> $GITHUB_ENV
 
-      - name: Mover a "Done"
+      - name: Agregar el Issue al Proyecto (si no está agregado)
+        id: add-to-project
         run: |
-          COLUMN_ID="4"  # Reemplázalo con el ID de la columna "Done"
-
-          curl -X POST -H "Authorization: Bearer ${{ secrets.ALNACKLO_PAT }}" \
+          PROJECT_ITEM_ID=$(curl -s -X POST -H "Authorization: Bearer ${{ secrets.ALNACKLO_PAT }}" \
             -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/projects/columns/${COLUMN_ID}/cards \
-            -d "{\"content_id\": \"${{ env.ISSUE_ID }}\", \"content_type\": \"Issue\"}"
+            https://api.github.com/graphql \
+            -d '{ "query": "mutation { addProjectV2ItemById(input: { projectId: \"'$PROJECT_ID'\", contentId: \"'$ISSUE_ID'\" }) { item { id } } }" }' | jq -r '.data.addProjectV2ItemById.item.id')
+
+          if [ "$PROJECT_ITEM_ID" == "null" ]; then
+            echo "❌ No se pudo agregar el Issue al Proyecto. Saliendo..."
+            exit 1
+          fi
+
+          echo "✅ Issue agregado al Proyecto con ID: $PROJECT_ITEM_ID"
+          echo "PROJECT_ITEM_ID=$PROJECT_ITEM_ID" >> $GITHUB_ENV
+
+      - name: Mover el Issue a "Dev"
+        run: |
+          RESPONSE=$(curl -s -X POST -H "Authorization: Bearer ${{ secrets.ALNACKLO_PAT }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/graphql \
+            -d '{ "query": "mutation { updateProjectV2ItemFieldValue(input: { projectId: \"'$PROJECT_ID'\", itemId: \"'$PROJECT_ITEM_ID'\", fieldId: \"'$FIELD_STATUS_ID'\", value: { singleSelectOptionId: \"'$STATUS_DEV_ID'\" } }) { projectV2Item { id } } }" }')
+
+          if [[ "$RESPONSE" == *"errors"* ]]; then
+            echo "❌ Error al mover el Issue a 'Dev'. Respuesta: $RESPONSE"
+            exit 1
+          fi
+
+          echo "✅ Issue movido a 'Dev' correctamente."
