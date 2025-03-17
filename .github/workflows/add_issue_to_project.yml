@@ -1,0 +1,44 @@
+name: Add Issue to Project on Creation
+
+on:
+  issues:
+    types:
+      - opened
+
+jobs:
+  add-to-kanban:
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_ID: "PVT_kwDODB6w4M4A0YLS"  # ID del Proyecto
+
+    steps:
+      - name: Obtener ID del Issue
+        id: get-issue-id
+        run: |
+          ISSUE_ID="${{ github.event.issue.node_id }}"
+
+          if [ -z "$ISSUE_ID" ]; then
+            echo "❌ No se pudo obtener el ID del Issue. Saliendo..."
+            exit 1
+          fi
+
+          echo "✅ ID del Issue obtenido: $ISSUE_ID"
+          echo "ISSUE_ID=$ISSUE_ID" >> $GITHUB_ENV
+
+      - name: Agregar el Issue al Proyecto
+        id: add-to-project
+        run: |
+          RESPONSE=$(curl -s -X POST -H "Authorization: Bearer ${{ secrets.ALNACKLO_PAT }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/graphql \
+            -d '{ "query": "mutation { addProjectV2ItemById(input: { projectId: \"'$PROJECT_ID'\", contentId: \"'$ISSUE_ID'\" }) { item { id } } }" }')
+
+          PROJECT_ITEM_ID=$(echo $RESPONSE | jq -r '.data.addProjectV2ItemById.item.id')
+
+          if [ "$PROJECT_ITEM_ID" == "null" ]; then
+            echo "❌ No se pudo agregar el Issue al Proyecto. Respuesta: $RESPONSE"
+            exit 1
+          fi
+
+          echo "✅ Issue agregado al Proyecto con ID: $PROJECT_ITEM_ID"
+          echo "PROJECT_ITEM_ID=$PROJECT_ITEM_ID" >> $GITHUB_ENV
