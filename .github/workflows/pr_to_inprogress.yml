@@ -17,7 +17,7 @@ jobs:
       - name: Extraer número de Issue del PR
         id: extract-issue
         run: |
-          ISSUE_NUMBER=$(echo "${{ github.event.pull_request.body }}" | grep -oE "fix #([0-9]+)" | awk '{print $2}' | tr -d '#')
+          ISSUE_NUMBER=$(echo "${{ github.event.pull_request.title }}" | grep -oE "fix #([0-9]+)" | awk '{print $2}' | tr -d '#')
           echo "ISSUE_NUMBER=$ISSUE_NUMBER" >> $GITHUB_ENV
 
       - name: Verificar si el número de Issue fue detectado
