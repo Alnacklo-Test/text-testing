@@ -1,0 +1,37 @@
+name: Move all Issues from Stage to Main when PR is merged
+
+on:
+  push:
+    branches:
+      - main  # Se ejecuta cuando se hace push a la rama main
+
+jobs:
+  move-to-main:
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_ID: "PVT_kwDODB6w4M4A0YLS"  # ID del Proyecto
+      FIELD_STATUS_ID: "PVTSSF_lADODB6w4M4A0YLSzgqBSYE"  # ID del campo "Status"
+      STATUS_STAGE_ID: "98236657"  # ID del estado "Stage"
+      STATUS_MAIN_ID: "61c07dd7"  # ID del estado "Main"
+
+    steps:
+      - name: Obtener todas las tareas en "Stage"
+        id: get-stage-items
+        run: |
+          ITEMS=$(curl -s -X POST -H "Authorization: Bearer ${{ secrets.ALNACKLO_PAT }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/graphql \
+            -d '{ "query": "query { node(id: \"'$PROJECT_ID'\") { ... on ProjectV2 { items(first: 100) { nodes { id fieldValues(first: 10) { nodes { ... on ProjectV2ItemFieldSingleSelectValue { field { id } optionId } } } } } } } }" }' | jq -c '.data.node.items.nodes | map(select(.fieldValues.nodes[].optionId == "'$STATUS_STAGE_ID'"))')
+
+          echo "ITEMS=$ITEMS" >> $GITHUB_ENV
+
+      - name: Mover todas las tareas de "Stage" a "Main"
+        run: |
+          for ITEM in $(echo '${{ env.ITEMS }}' | jq -r '.[].id'); do
+            RESPONSE=$(curl -s -X POST -H "Authorization: Bearer ${{ secrets.ALNACKLO_PAT }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              https://api.github.com/graphql \
+              -d '{ "query": "mutation { updateProjectV2ItemFieldValue(input: { projectId: \"'$PROJECT_ID'\", itemId: \"'$ITEM'\", fieldId: \"'$FIELD_STATUS_ID'\", value: { singleSelectOptionId: \"'$STATUS_MAIN_ID'\" } }) { projectV2Item { id } } }" }')
+
+            echo "✔️ Movido $ITEM de 'Stage' a 'Main': $RESPONSE"
+          done
