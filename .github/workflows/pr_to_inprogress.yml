@@ -11,7 +11,7 @@ jobs:
     env:
       PROJECT_ID: "PVT_kwDODB6w4M4A0YLS"  # ID del Proyecto
       FIELD_STATUS_ID: "PVTSSF_lADODB6w4M4A0YLSzgqBSYE"  # ID del campo "Status"
-      STATUS_IN_PROGRESS_ID: "ID_DEL_VALOR_IN_PROGRESS"  # ID del estado "In Progress"
+      STATUS_IN_PROGRESS_ID: "47fc9ee4"  # ID del estado "In Progress"
 
     steps:
       - name: Extraer número de Issue del PR
