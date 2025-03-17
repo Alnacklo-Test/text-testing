@@ -9,13 +9,21 @@ jobs:
   move-to-do:
     runs-on: ubuntu-latest
     steps:
-      - name: Mover a "To Do" en el GitHub Project
+      - name: Mover Issue a "To Do"
         run: |
           ISSUE_ID=${{ github.event.issue.node_id }}
-          PROJECT_ID="1"  # Cambia esto con tu ID del proyecto
-          COLUMN_ID="2"  # Cambia esto con el ID de la columna "To Do"
 
-          curl -X POST -H "Authorization: Bearer ${{ secrets.ALNACKLO_PAT }}" \
+          # Agregar el Issue al Proyecto si no está agregado
+          ADD_ITEM_RESPONSE=$(curl -s -X POST -H "Authorization: Bearer ${{ secrets.ALNACKLO_PAT }}" \
             -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/projects/columns/${COLUMN_ID}/cards \
-            -d "{\"content_id\": \"${ISSUE_ID}\", \"content_type\": \"Issue\"}"
+            https://api.github.com/graphql \
+            -d '{ "query": "mutation { addProjectV2ItemById(input: { projectId: \"PVT_kwDODB6w4M4A0YLS\", contentId: \"I_kwDOOIsGV86uQKcs\" }) { item { id } } }" }')
+
+          PROJECT_ITEM_ID=$(echo $ADD_ITEM_RESPONSE | jq -r '.data.addProjectV2ItemById.item.id')
+
+          # Mover el Issue a "To Do"
+          curl -s -X POST -H "Authorization: Bearer ${{ secrets.ALNACKLO_PAT }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/graphql \
+            -d '{ "query": "mutation { updateProjectV2ItemFieldValue(input: { projectId: \"PVT_kwDODB6w4M4A0YLS\", itemId: \"'$PROJECT_ITEM_ID'\", fieldId: \"PVTSSF_lADODB6w4M4A0YLSzgqBSYE\", value: { singleSelectOptionId: \"f75ad846\" } }) { projectV2Item { id } } }" }'
+
