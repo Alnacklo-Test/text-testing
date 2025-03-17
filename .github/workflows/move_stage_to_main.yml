@@ -11,7 +11,7 @@ jobs:
     env:
       PROJECT_ID: "PVT_kwDODB6w4M4A0YLS"  # ID del Proyecto
       FIELD_STATUS_ID: "PVTSSF_lADODB6w4M4A0YLSzgqBSYE"  # ID del campo "Status"
-      STATUS_STAGE_ID: "98236657"  # ID del estado "Stage"
+      STATUS_STAGE_ID: "fbe3acd1"  # ID del estado "Stage"
       STATUS_MAIN_ID: "61c07dd7"  # ID del estado "Main"
 
     steps:
