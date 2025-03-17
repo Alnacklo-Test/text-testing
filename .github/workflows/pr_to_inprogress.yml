@@ -4,6 +4,8 @@ on:
   pull_request:
     types:
       - opened
+    branches:
+      - dev
 
 jobs:
   move-to-in-progress:
