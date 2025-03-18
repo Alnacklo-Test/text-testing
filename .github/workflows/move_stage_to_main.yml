@@ -5,7 +5,7 @@ on:
     branches:
       - main
     types:
-      - closed  # Solo se ejecuta cuando un PR a main se mergea
+      - closed  # Solo se ejecuta cuando un PR a main es mergeado
 
 jobs:
   move-to-main:
@@ -14,7 +14,7 @@ jobs:
       PROJECT_ID: "PVT_kwDODB6w4M4A0YLS"  # ID del Proyecto
       FIELD_STATUS_ID: "PVTSSF_lADODB6w4M4A0YLSzgqBSYE"  # ID del campo "Status"
       STATUS_STAGE_ID: "fbe3acd1"  # ID del estado "Stage"
-      STATUS_MAIN_ID: "61c07dd7"  # ID del estado "Main" (Reemplazar con el ID real)
+      STATUS_MAIN_ID: "MAIN123"  # ID del estado "Main" (Reemplazar con el ID real)
 
     steps:
       - name: Verificar si el PR proviene de "stage"
@@ -22,11 +22,16 @@ jobs:
         run: |
           BASE_BRANCH="${{ github.event.pull_request.base.ref }}"
           HEAD_BRANCH="${{ github.event.pull_request.head.ref }}"
-          echo "Base Branch: $BASE_BRANCH"
-          echo "Head Branch: $HEAD_BRANCH"
+          echo "Base Branch (Destino del PR): $BASE_BRANCH"
+          echo "Head Branch (Origen del PR): $HEAD_BRANCH"
 
-          if [ "$BASE_BRANCH" != "main" ] || [ "$HEAD_BRANCH" != "stage" ]; then
-            echo "❌ Este PR no es un merge de 'stage' a 'main'. Saliendo..."
+          if [ "$BASE_BRANCH" != "main" ]; then
+            echo "❌ El PR no va hacia main. No debería haberse ejecutado este workflow. Saliendo..."
+            exit 1
+          fi
+
+          if [ "$HEAD_BRANCH" != "stage" ]; then
+            echo "❌ El PR no proviene de stage. No se moverán issues. Saliendo..."
             exit 0
           fi
 
