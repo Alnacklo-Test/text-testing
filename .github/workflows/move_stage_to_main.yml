@@ -14,25 +14,33 @@ jobs:
       PROJECT_ID: "PVT_kwDODB6w4M4A0YLS"  # ID del Proyecto
       FIELD_STATUS_ID: "PVTSSF_lADODB6w4M4A0YLSzgqBSYE"  # ID del campo "Status"
       STATUS_STAGE_ID: "fbe3acd1"  # ID del estado "Stage"
-      STATUS_MAIN_ID: "MAIN123"  # ID del estado "Main" (Reemplazar con el ID real)
+      STATUS_MAIN_ID: "61c07dd7"  # ID del estado "Main"
 
     steps:
-      - name: Verificar si el PR proviene de "stage"
-        id: check-source-branch
+      - name: Obtener información del PR
+        id: get-pr-info
         run: |
-          BASE_BRANCH="${{ github.event.pull_request.base.ref }}"
-          HEAD_BRANCH="${{ github.event.pull_request.head.ref }}"
+          PR_URL="${{ github.event.pull_request.url }}"
+          PR_DATA=$(curl -s -H "Authorization: Bearer ${{ secrets.ALNACKLO_PAT }}" -H "Accept: application/vnd.github.v3+json" $PR_URL)
+          HEAD_BRANCH=$(echo "$PR_DATA" | jq -r '.head.ref')
+          BASE_BRANCH=$(echo "$PR_DATA" | jq -r '.base.ref')
+
           echo "Base Branch (Destino del PR): $BASE_BRANCH"
           echo "Head Branch (Origen del PR): $HEAD_BRANCH"
 
-          if [ "$BASE_BRANCH" != "main" ]; then
+          echo "HEAD_BRANCH=$HEAD_BRANCH" >> $GITHUB_ENV
+          echo "BASE_BRANCH=$BASE_BRANCH" >> $GITHUB_ENV
+
+      - name: Verificar si el PR proviene de "stage"
+        run: |
+          if [ "${{ env.BASE_BRANCH }}" != "main" ]; then
             echo "❌ El PR no va hacia main. No debería haberse ejecutado este workflow. Saliendo..."
-            exit 1
+            exit 1  # Forzamos la detención completa del workflow
           fi
 
-          if [ "$HEAD_BRANCH" != "stage" ]; then
+          if [ "${{ env.HEAD_BRANCH }}" != "stage" ]; then
             echo "❌ El PR no proviene de stage. No se moverán issues. Saliendo..."
-            exit 0
+            exit 1  # Forzamos la detención completa del workflow
           fi
 
       - name: Obtener todas las tareas en "Stage"
