@@ -35,12 +35,12 @@ jobs:
         run: |
           if [ "${{ env.BASE_BRANCH }}" != "main" ]; then
             echo "❌ El PR no va hacia main. No debería haberse ejecutado este workflow. Saliendo..."
-            exit 1
+            exit 1  # Forzamos la detención completa del workflow
           fi
 
           if [ "${{ env.HEAD_BRANCH }}" != "stage" ]; then
             echo "❌ El PR no proviene de stage. No se moverán issues. Saliendo..."
-            exit 0
+            exit 1  # Forzamos la detención completa del workflow
           fi
 
       - name: Obtener todas las tareas en "Stage"
