@@ -5,7 +5,7 @@ on:
     branches:
       - main
     types:
-      - closed  # Se ejecuta solo cuando un PR a main es mergeado
+      - closed  # Solo se ejecuta cuando un PR a main se mergea
 
 jobs:
   move-to-main:
@@ -14,7 +14,7 @@ jobs:
       PROJECT_ID: "PVT_kwDODB6w4M4A0YLS"  # ID del Proyecto
       FIELD_STATUS_ID: "PVTSSF_lADODB6w4M4A0YLSzgqBSYE"  # ID del campo "Status"
       STATUS_STAGE_ID: "fbe3acd1"  # ID del estado "Stage"
-      STATUS_MAIN_ID: "61c07dd7"  # ID del estado "Main"
+      STATUS_MAIN_ID: "61c07dd7"  # ID del estado "Main" (Reemplazar con el ID real)
 
     steps:
       - name: Verificar si el PR proviene de "stage"
