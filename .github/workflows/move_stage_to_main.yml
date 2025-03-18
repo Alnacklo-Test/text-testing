@@ -1,9 +1,11 @@
 name: Move all Issues from Stage to Main when PR is merged
 
 on:
-  push:
+  pull_request:
     branches:
-      - main  # Se ejecuta cuando se hace push a la rama main
+      - main
+    types:
+      - closed  # Solo se ejecuta cuando un PR a main es mergeado
 
 jobs:
   move-to-main:
@@ -12,9 +14,27 @@ jobs:
       PROJECT_ID: "PVT_kwDODB6w4M4A0YLS"  # ID del Proyecto
       FIELD_STATUS_ID: "PVTSSF_lADODB6w4M4A0YLSzgqBSYE"  # ID del campo "Status"
       STATUS_STAGE_ID: "fbe3acd1"  # ID del estado "Stage"
-      STATUS_MAIN_ID: "61c07dd7"  # ID del estado "Main"
+      STATUS_MAIN_ID: "MAIN123"  # ID del estado "Main" (Reemplazar con el ID real)
 
     steps:
+      - name: Verificar si el PR proviene de "stage"
+        id: check-source-branch
+        run: |
+          BASE_BRANCH="${{ github.event.pull_request.base.ref }}"
+          HEAD_BRANCH="${{ github.event.pull_request.head.ref }}"
+          echo "Base Branch (Destino del PR): $BASE_BRANCH"
+          echo "Head Branch (Origen del PR): $HEAD_BRANCH"
+
+          if [ "$BASE_BRANCH" != "main" ]; then
+            echo "❌ El PR no va hacia main. No debería haberse ejecutado este workflow. Saliendo..."
+            exit 1
+          fi
+
+          if [ "$HEAD_BRANCH" != "stage" ]; then
+            echo "❌ El PR no proviene de stage. No se moverán issues. Saliendo..."
+            exit 0
+          fi
+
       - name: Obtener todas las tareas en "Stage"
         id: get-stage-items
         run: |
